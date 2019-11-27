@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 PACKAGES_SIMTEST=$(shell go list ./... | grep '/simulation')
-VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
+VERSION := $(shell echo $(shell git describe --all) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 SDK_PACK := $(shell go list -m github.com/cosmos/cosmos-sdk | sed  's/ /\@/g')
@@ -62,8 +62,8 @@ ldflags := $(strip $(ldflags))
 
 BUILD_FLAGS := -tags "$(build_tags)" -ldflags '$(ldflags)'
 
-# The below include contains the tools target.
-include contrib/devtools/Makefile
+# # The below include contains the tools target.
+# include contrib/devtools/Makefile
 
 all: install lint test
 
@@ -186,11 +186,3 @@ run-lcd-contract-tests:
 contract-tests: setup-transactions
 	@echo "Running Gaia LCD for contract tests"
 	dredd && pkill gaiad
-
-# include simulations
-include sims.mk
-
-.PHONY: all build-linux install install-debug \
-	go-mod-cache draw-deps clean build \
-	setup-transactions setup-contract-tests-data start-gaia run-lcd-contract-tests contract-tests \
-	test test-all test-build test-cover test-unit test-race

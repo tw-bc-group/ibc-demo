@@ -1,10 +1,10 @@
-# IBC instruction
+**项目依赖**
 
-## Dependencies
+这个演示分支是存在与 Gaia 项目中的，如果是第一次运行 Gaia，请确保本地 Go 开发环境是可工作的。
 
-This branch uses non-canonical branch of cosmos-sdk. Before building, run `go mod vendor` on the root directory to retrieve the dependencies. To build:
+拉取代码和编译二进制文件：
 
-```shell
+```
 git clone git@github.com:cosmos/gaia
 cd gaia
 git checkout cwgoes/ibc-demo-fixes
@@ -13,28 +13,31 @@ gaiad version
 gaiacli version
 ```
 
-## Environment Setup
+**测试网环境设置**
 
-Stub out testnet files for 2 nodes, this example does so in your $HOME directory:
+创建临时测试目录，创建测试链 `ibc0` 和 `ibc1`
 
-```shell
+```
 cd ~ && mkdir ibc-testnets && cd ibc-testnets
 gaiad testnet -o ibc0 --v 1 --chain-id ibc0 --node-dir-prefix n
 gaiad testnet -o ibc1 --v 1 --chain-id ibc1 --node-dir-prefix n
 ```
 
-### Set `gaiad` and `gaiacli` Configuation
+**修改默认的 `gaiad` 和 `gaiacli` 配置**
 
-Fix the configuration files for both `gaiad` and `gaiacli` to allow both chains/nodes to run on the same machine:
+`gaiad`和 `gaiacli` 是我们通过编译之后自动安装到 Go 可执行文件目录下的 Gaia 客户端，其中`gaiad` 是全节点客户端，`gaiacli` 是轻节点客户端。
 
-```bash
+通过运行如下命令，修改链的默认配置，使得两条链可以在本地同时跑起来：
+
 # Configure the proper database backend for each node and different listening ports
-sed -i 's/"leveldb"/"goleveldb"/g' ibc0/n0/gaiad/config/config.toml
-sed -i 's/"leveldb"/"goleveldb"/g' ibc1/n0/gaiad/config/config.toml
-sed -i 's#"tcp://0.0.0.0:26656"#"tcp://0.0.0.0:26556"#g' ibc1/n0/gaiad/config/config.toml
-sed -i 's#"tcp://0.0.0.0:26657"#"tcp://0.0.0.0:26557"#g' ibc1/n0/gaiad/config/config.toml
-sed -i 's#"localhost:6060"#"localhost:6061"#g' ibc1/n0/gaiad/config/config.toml
-sed -i 's#"tcp://127.0.0.1:26658"#"tcp://127.0.0.1:26558"#g' ibc1/n0/gaiad/config/config.toml
+
+```
+sed -i "_back" 's/"leveldb"/"goleveldb"/g' ibc0/n0/gaiad/config/config.toml
+sed -i "_back" 's/"leveldb"/"goleveldb"/g' ibc1/n0/gaiad/config/config.toml
+sed -i "_back" 's#"tcp://0.0.0.0:26656"#"tcp://0.0.0.0:26556"#g' ibc1/n0/gaiad/config/config.toml
+sed -i "_back" 's#"tcp://0.0.0.0:26657"#"tcp://0.0.0.0:26557"#g' ibc1/n0/gaiad/config/config.toml
+sed -i "_back" 's#"localhost:6060"#"localhost:6061"#g' ibc1/n0/gaiad/config/config.toml
+sed -i "_back" 's#"tcp://127.0.0.1:26658"#"tcp://127.0.0.1:26558"#g' ibc1/n0/gaiad/config/config.toml
 gaiacli config --home ibc0/n0/gaiacli/ chain-id ibc0
 gaiacli config --home ibc1/n0/gaiacli/ chain-id ibc1
 gaiacli config --home ibc0/n0/gaiacli/ output json
@@ -43,38 +46,43 @@ gaiacli config --home ibc0/n0/gaiacli/ node http://localhost:26657
 gaiacli config --home ibc1/n0/gaiacli/ node http://localhost:26557
 ```
 
-Add keys from each chain to the other and make sure that the key at `ibc1/n0/gaiacli/key_seed.json` is named `n1` on each `gaiacli` instance and the same for `n0`. After this is complete the results of `gaiacli keys list` from each chain should be identical. The following commands will do the trick:
+配置两条链的私钥，使得`n0` 和`n1` 同时出现在两条链上。
 
-```bash
+```
 gaiacli --home ibc1/n0/gaiacli keys delete n0
 gaiacli keys test --home ibc0/n0/gaiacli n1 "$(jq -r '.secret' ibc1/n0/gaiacli/key_seed.json)" 12345678
 gaiacli keys test --home ibc1/n0/gaiacli n0 "$(jq -r '.secret' ibc0/n0/gaiacli/key_seed.json)" 12345678
 gaiacli keys test --home ibc1/n0/gaiacli n1 "$(jq -r '.secret' ibc1/n0/gaiacli/key_seed.json)" 12345678
 ```
 
-After this operation, check to make sure the keys match:
+进行检查，确保两条命令输出结果是一样的
 
-```bash
+```
 gaiacli --home ibc0/n0/gaiacli keys list | jq -r '.[].address'
 gaiacli --home ibc1/n0/gaiacli keys list | jq -r '.[].address'
 ```
 
-After configuration is complete, you will be able to start two `gaiad` processes:
+当私钥配置完毕后，可以启动两条链的全节点，个人建议不要在后台运行，因为会搞忘记关掉，也不便于观察日志🙈
 
-```bash
-nohup gaiad --home ibc0/n0/gaiad start > ibc0.log &
-nohup gaiad --home ibc1/n0/gaiad start > ibc1.log &
+```
+gaiad --home ibc0/n0/gaiad start
 ```
 
-> NOTE: If you would like to look at the logs from the instances just `tail -f ibc0.log`.
+打开一个新的命令行，在与上一个命令行相同的路径下：
 
-## IBC Command Sequence
+```
+gaiad --home ibc1/n0/gaiad start
+```
 
-### Client Creation
+到此，两条链`ibc0` 和`ibc1` 就启动好了。接下来，我们需要进行跨链相关的命令操作。
 
-Create IBC clients on each chain using the following commands. Note that we are using the consensus state of `ibc1` to create the client on `ibc0` and visa-versa. These "roots of trust" are used to validate transactions coming from the other chain. They will be updated periodically during handshakes and will require update at least once per unbonding period:
+**IBC 操作流程**
 
-```bash
+**建立客户端**
+
+通过如下命令在两条链上建立彼此的客户端，值得注意的是，创建客户端的过程本身也是一笔交易，既然是交易，那么创建客户端的流程也同样会经过对应链的共识。在共识阶段，可信任的节点会去验证来自与其他链上的交易，在建立链接阶段，他们至少会通过握手协议更新最新的区块信息一次，之后他们会周期性地更新信息。
+
+```
 # client for chain ibc1 on chain ibc0
 echo -e "12345678\n" | gaiacli --home ibc0/n0/gaiacli \
   tx ibc client create ibconeclient \
@@ -88,23 +96,23 @@ echo -e "12345678\n" | gaiacli --home ibc1/n0/gaiacli \
   --from n1 -y -o text
 ```
 
-To query details about the clients use the following commands:
+查询详细的客户端状态：
 
-```bash
+```
 gaiacli --home ibc0/n0/gaiacli q ibc client consensus-state ibconeclient --indent
 gaiacli --home ibc1/n0/gaiacli q ibc client consensus-state ibczeroclient --indent
 ```
 
-### Connection Creation
+**建立连接**
 
-In order to send transactions using IBC there are two different handshakes that must be performed. First there is a `connection` created between the two chains. Once the connection is created, an application specific `channel` handshake is performed which allows the transfer of application specific data. Examples of applications are token transfer, cross-chain validation, cross-chain accounts, and in this tutorial `ibc-mock`.
+为了在两条链之间进行跨链交易，在这之前，必须通过`握手`进行`连接`。一旦连接建立，需要通过另一次握手协议建立针对某一特定应用的`通道` ，使得这一应用特定的数据能在这个通道之内进行传输。典型的例子比如通证转移、跨链验证、跨链账户等等，以及演示项目`ibc-mock`。
 
-Create a `connection` with the following command:
+通过如下命令建立连接，需要注意的是，在建立连接的过程中，一共会在两条链上广播**7**笔来自与两个钱包的交易。
 
-> NOTE: This command broadcasts a total of 7 transactions between the two chains from 2 different wallets. At the start of the command you will be prompted for passwords for the two different keys (`12345678` for both). The command will then take some time, please wait for it to return!
+运行命令的过程中，会要求输入账户的密码，在这里是 12345678。这个过程会耗费一些时间，Cosmos的交易确认时间大概是6-7秒，所以等待时间在代码里被设置为8秒，理论上整个过程的等待时间大约为 7*8 = 56s，约为一分钟。
 
-```shell
-gaiacli \
+```
+gaiacli \ 
   --home ibc0/n0/gaiacli \
   tx ibc connection handshake \
   connectionzero ibconeclient $(gaiacli --home ibc1/n0/gaiacli q ibc client path) \
@@ -115,7 +123,7 @@ gaiacli \
   --node2 tcp://localhost:26557
 ```
 
-After the password input, you should see output like the following:
+当键入密码后，连接启动，你会看到如下的日志：
 
 ```
 ibc0 <- connection_open_init    [OK] txid(B41C15A8F31524CB34EE061BA4418F48A3A37A7348BF8F818E67F5EE90AED45F) client(ibconeclient) connection(connectionzero)
@@ -127,20 +135,20 @@ ibc1 <- update_client           [OK] txid(50D737D7798E1D0A2E0452B7EDDC2D06A06524
 ibc0 <- connection_open_confirm [OK] txid(CF0F7E54481D90A438A625E16EAB48F5480334AF090CE05736BDFACB69B8F798) connection(connectionone)
 ```
 
-Once the connection is established you should be able to query it:
+连接建立之后，可以运行如下命令查询连接状态：
 
-```bash
+```
 gaiacli --home ibc0/n0/gaiacli q ibc connection end connectionzero --indent --trust-node
 gaiacli --home ibc1/n0/gaiacli q ibc connection end connectionone --indent --trust-node
 ```
 
-### Channel
+**建立通道**
 
-Now that the `connection` has been created, it's time to establish a `channel` for the `ibc-mock` application protocol. This will allow sending of data between `ibc0` and `ibc1`. To create the `channel`, run the following command:
+现在两条链上的客户端已经建立连接，现在需要对我们的`ibc-mock` 应用建立`通道` 。通过通道我们可以在链`ibc0` 和 `ibc1` 之间发送数据。
 
-> NOTE: This command broadcasts a total of 7 transactions between the two chains from 2 different wallets. At the start of the command you will be prompted for passwords for the two different keys (`12345678` for both). The command will then take some time, please wait for it to return!
+与建立连接类似的，建立通道同样需要在两条链上广播7笔交易，需要大约一分钟的交易确认时间。
 
-```bash
+```
 gaiacli \
   --home ibc0/n0/gaiacli \
   tx ibc channel handshake \
@@ -152,7 +160,7 @@ gaiacli \
   --from1 n0 --from2 n1
 ```
 
-You should see output like the following:
+会看到如下日志：
 
 ```
 ibc0 <- channel_open_init       [OK] txid(792E51E0455A8E0C85705C61A638A4D7C5399B3BA5AF6F29C85BB4E090FCA1B7) portid(bankbankbank) chanid(channelzero)
@@ -164,54 +172,57 @@ ibc1 <- update_client           [OK] txid(BBE212C5041AC366C018BB97F8DF8A495562EA
 ibc1 <- channel_open_confirm    [OK] txid(69F50CA44AE6AD84BD24866E7DB7FE8ADFD9C484171662CB9E6F0C71BFC222A9) portid(bankbankbank) chanid(channelone)
 ```
 
-You can query the `channel` after establishment by running the following command:
+通道建立之后可以进行状态查询：
 
-```bash
+```
 gaiacli --home ibc0/n0/gaiacli q ibc channel end bankbankbank channelzero --indent --trust-node
 gaiacli --home ibc1/n0/gaiacli q ibc channel end bankbankbank channelone --indent --trust-node
 ```
 
-### Send Packet
+**发送数据包**
 
-To send a packet using the `bank` application protocol, you need to know the `channel` you plan to send on, as well as the `port` on the channel. You also need to provide an `address` and `amount`. Use the following command to send the packet:
+通道建立之后，我们需要使用`bank` 应用协议发送数据包，需要提供通道的名字和端口号，以及该笔交易的地址和通证信息：
 
-```bash
+```
 gaiacli \
   --home ibc0/n0/gaiacli \
   tx ibc transfer transfer \
   bank channelzero \
   $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a) 1stake \
   --from n0 \
-  --source
+  --source \
+  --indent
 ```
 
-> NOTE: This commands returns the `height` at which it was committed, this should be at the beginning of the JSON output. The enviornment variable `TIMEOUT`.
+该笔交易提交之后，会返回在发送的这条链上的块高。在链的日志上，也可以看到该笔交易被包裹进了对应区块。
 
-### Receive Packet
+**接受数据包**
 
-Now, try querying the account on `ibc1` that you sent the `1stake` to, the account will be empty:
+现在，试着查询要发往的`ibc1` 链上的账户信息，当前应该是不存在`1stake` 这个资产的：
 
-```bash
-gaiacli --home ibc1/n0/gaiacli q account $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a)
+```
+gaiacli --home ibc1/n0/gaiacli q account $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a) --indent
 ```
 
-To complete the transfer once packets are sent, receipt must be confirmed on the destination chain. To `recv-packet` from `ibc0` on `ibc1`, run the following command:
+为了完成该笔跨链交易，在目标链上，这笔转账交易需要被确认，通过一下指令来接受转账：
 
-```bash
+```
 gaiacli \
   tx ibc transfer recv-packet \
   bank channelzero ibczeroclient \
   --home ibc1/n0/gaiacli \
   --packet-sequence 1 \
-  --timeout $TIMEOUT \
+  --timeout 1007 \
   --from n1 \
   --node2 tcp://localhost:26657 \
   --chain-id2 ibc0 \
-  --source
+  --source \
+  --indent
 ```
+在目标链上进行“确认收货”的过程本质上也是在该链上广播一笔交易，告诉网络中的节点，“我收到了这笔转账，现在我拥有了这个转过来的资产了”。
 
-Once the packets have been recieved you should see the `1stake` in your account on `ibc1`:
+现在，我们可以查询我们确实收到了这笔资产了：
 
-```bash
-gaiacli --home ibc1/n0/gaiacli q account $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a)
+```
+gaiacli --home ibc1/n0/gaiacli q account $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a) --indent
 ```
