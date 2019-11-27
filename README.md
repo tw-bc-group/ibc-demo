@@ -14,13 +14,15 @@
 拉取代码和编译二进制文件：
 
 ```
-git clone git@github.com:cosmos/gaia
-cd gaia
-git checkout cwgoes/ibc-demo-fixes
+mkdir -p ${GO_PATH}/tw-bc-group && cd ${GO_PATH}/tw-bc-group
+git clone git@github.com:tw-bc-group/ibc-demo.git
+cd ibc-demo
+git checkout master
 make install
 gaiad version
 gaiacli version
 ```
+> `GO_PATH` 是本地的 Go 根目录的环境变量，示例值如：__/Users/cwzeng/.go/src__
 
 **测试网环境设置**
 
