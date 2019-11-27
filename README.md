@@ -3,6 +3,10 @@
 
 > 运行完如下流程预计20分钟（不包含 Golang 环境搭建）
 
+[项目地址](https://github.com/cosmos/gaia/blob/cwgoes/ibc-demo-fixes/ibc-demo.md)<br/>
+[Cosmos IBC 跨链标准剖析](https://www.notion.so/arthaszeng/Cosmos-IBC-ICS-fad72555b8bc476e820d92cfec88b167)
+
+## Process
 **项目依赖**
 
 这个演示分支是存在与 Gaia 项目中的，如果是第一次运行 Gaia，请确保本地 Go 开发环境是可工作的。
@@ -33,9 +37,6 @@ gaiad testnet -o ibc1 --v 1 --chain-id ibc1 --node-dir-prefix n
 `gaiad`和 `gaiacli` 是我们通过编译之后自动安装到 Go 可执行文件目录下的 Gaia 客户端，其中`gaiad` 是全节点客户端，`gaiacli` 是轻节点客户端。
 
 通过运行如下命令，修改链的默认配置，使得两条链可以在本地同时跑起来：
-
-# Configure the proper database backend for each node and different listening ports
-
 ```
 sed -i "_back" 's/"leveldb"/"goleveldb"/g' ibc0/n0/gaiad/config/config.toml
 sed -i "_back" 's/"leveldb"/"goleveldb"/g' ibc1/n0/gaiad/config/config.toml
