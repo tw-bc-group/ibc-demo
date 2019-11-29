@@ -9,6 +9,11 @@
 ## Process
 **项目依赖**
 
+安转 jq，jq 是一款轻量级的命令行 json 处理工具。
+```
+brew install jq
+```
+
 这个演示分支是存在与 Gaia 项目中的，如果是第一次运行 Gaia，请确保本地 Go 开发环境是可工作的。
 
 拉取代码和编译二进制文件：
@@ -120,7 +125,7 @@ gaiacli --home ibc1/n0/gaiacli q ibc client consensus-state ibczeroclient --inde
 运行命令的过程中，会要求输入账户的密码，在这里是 12345678。这个过程会耗费一些时间，Cosmos的交易确认时间大概是6-7秒，所以等待时间在代码里被设置为8秒，理论上整个过程的等待时间大约为 7*8 = 56s，约为一分钟。
 
 ```
-gaiacli \ 
+gaiacli \
   --home ibc0/n0/gaiacli \
   tx ibc connection handshake \
   connectionzero ibconeclient $(gaiacli --home ibc1/n0/gaiacli q ibc client path) \
@@ -171,20 +176,20 @@ gaiacli \
 会看到如下日志：
 
 ```
-ibc0 <- channel_open_init       [OK] txid(792E51E0455A8E0C85705C61A638A4D7C5399B3BA5AF6F29C85BB4E090FCA1B7) portid(bankbankbank) chanid(channelzero)
+ibc0 <- channel_open_init       [OK] txid(792E51E0455A8E0C85705C61A638A4D7C5399B3BA5AF6F29C85BB4E090FCA1B7) portid(bank) chanid(channelzero)
 ibc1 <- update_client           [OK] txid(CEA961B9BE931E7B06E6D5643486D267677E66A253F104BC00E2BCE1F9343C03) client(ibczeroclient)
-ibc1 <- channel_open_try        [OK] txid(D6BC3B03646EF61D1DA153C6678FE047DF76CB12981AC1D524C69C22124967D7) portid(bankbankbank) chanid(channelone)
+ibc1 <- channel_open_try        [OK] txid(D6BC3B03646EF61D1DA153C6678FE047DF76CB12981AC1D524C69C22124967D7) portid(bank) chanid(channelone)
 ibc0 <- update_client           [OK] txid(FA22E93601218CEA839FDEB7BD0D8F47D81E1172E18A8B21717675FF5C4BCF40) client(ibconeclient)
-ibc0 <- channel_open_ack        [OK] txid(1840343AFB2D5666F52440C199A1356C63A884A959F0A9A53175773CDB83006B) portid(bankbankbank) chanid(channelzero)
+ibc0 <- channel_open_ack        [OK] txid(1840343AFB2D5666F52440C199A1356C63A884A959F0A9A53175773CDB83006B) portid(bank) chanid(channelzero)
 ibc1 <- update_client           [OK] txid(BBE212C5041AC366C018BB97F8DF8A495562EAFFFF51BFDA7BBAE9952BE589D0) client(ibczeroclient)
-ibc1 <- channel_open_confirm    [OK] txid(69F50CA44AE6AD84BD24866E7DB7FE8ADFD9C484171662CB9E6F0C71BFC222A9) portid(bankbankbank) chanid(channelone)
+ibc1 <- channel_open_confirm    [OK] txid(69F50CA44AE6AD84BD24866E7DB7FE8ADFD9C484171662CB9E6F0C71BFC222A9) portid(bank) chanid(channelone)
 ```
 
 通道建立之后可以进行状态查询：
 
 ```
-gaiacli --home ibc0/n0/gaiacli q ibc channel end bankbankbank channelzero --indent --trust-node
-gaiacli --home ibc1/n0/gaiacli q ibc channel end bankbankbank channelone --indent --trust-node
+gaiacli --home ibc0/n0/gaiacli q ibc channel end bank channelzero --indent --trust-node
+gaiacli --home ibc1/n0/gaiacli q ibc channel end bank channelone --indent --trust-node
 ```
 
 **发送数据包**
@@ -198,8 +203,7 @@ gaiacli \
   bank channelzero \
   $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a) 1stake \
   --from n0 \
-  --source \
-  --indent
+  --source 
 ```
 
 该笔交易提交之后，会返回在发送的这条链上的块高。在链的日志上，也可以看到该笔交易被包裹进了对应区块。
@@ -234,3 +238,4 @@ gaiacli \
 ```
 gaiacli --home ibc1/n0/gaiacli q account $(gaiacli --home ibc0/n0/gaiacli keys show n1 -a) --indent
 ```
+输出的信息会说明有一笔从新建通道里面转移过来的coin。
