@@ -9,7 +9,7 @@
 ## Process
 **项目依赖**
 
-安转 jq，jq 是一款轻量级的命令行 json 处理工具。
+安装`jq`，`jq` 是一款轻量级的命令行 json 处理工具。
 ```
 brew install jq
 ```
@@ -19,7 +19,7 @@ brew install jq
 拉取代码和编译二进制文件：
 
 ```
-mkdir -p ${GO_PATH}/tw-bc-group && cd ${GO_PATH}/tw-bc-group
+mkdir -p ${GO_PATH}/github.com/tw-bc-group && cd ${GO_PATH}/github.com/tw-bc-group
 git clone git@github.com:tw-bc-group/ibc-demo.git
 cd ibc-demo
 git checkout master
